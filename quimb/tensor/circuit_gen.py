@@ -400,11 +400,14 @@ def circ_qaoa(
 
     for d in range(depth):
         for (i, j), wij in terms.items():
-            gates.append((d, "rzz", wij * gammas[d], i, j))
+            if i == j:
+                gates.append((d, 'rz', gammas[d] * wij, i))
+            else:
+                gates.append((d, "rzz", wij * gammas[d], i, j))
 
         for i in range(n):
             gates.append((d, "rx", -betas[d] * 2, i))
-
+            
     circ = Circuit(n, **circuit_opts)
     circ.apply_gates(gates)
 
