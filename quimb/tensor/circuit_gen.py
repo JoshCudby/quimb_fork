@@ -340,7 +340,8 @@ def circ_a2a_rand(
 
 
 def circ_qaoa(
-    terms,
+    linear_terms,
+    quadratic_terms,
     depth,
     gammas,
     betas,
@@ -369,7 +370,9 @@ def circ_qaoa(
 
     Parameters
     ----------
-    terms : dict[tuple[int], float]
+    linear_terms : dict[int, float]
+        The mapping of integer keys ``i`` to self-interaction weight values `wii``.
+    quadratic_terms : dict[tuple[int], float]
         The mapping of integer pair keys ``(i, j)`` to the edge weight values,
         ``wij``. The integers should be a contiguous range enumerated from
         zero, with the total number of qubits being inferred from this.
@@ -390,7 +393,7 @@ def circ_qaoa(
     circuit_opts.setdefault("gate_opts", {})
     circuit_opts["gate_opts"].setdefault("contract", False)
 
-    n = max(itertools.chain.from_iterable(terms)) + 1
+    n = max(itertools.chain.from_iterable(quadratic_terms)) + 1
 
     gates = []
 
@@ -399,14 +402,15 @@ def circ_qaoa(
         gates.append((0, "h", i))
 
     for d in range(depth):
-        for (i, j), wij in terms.items():
+        for i, wij in linear_terms.items():
+            gates.append((d+1, 'rz', gammas[d] * wij, i))
+        for (i, j), wij in quadratic_terms.items():
             if i == j:
-                gates.append((d, 'rz', gammas[d] * wij, i))
-            else:
-                gates.append((d, "rzz", wij * gammas[d], i, j))
+                raise Exception("Self interaction in quadratic terms")
+            gates.append((d+1, "rzz", wij * gammas[d], i, j))
 
         for i in range(n):
-            gates.append((d, "rx", -betas[d] * 2, i))
+            gates.append((d+1, "rx", -betas[d] * 2, i))
             
     circ = Circuit(n, **circuit_opts)
     circ.apply_gates(gates)
